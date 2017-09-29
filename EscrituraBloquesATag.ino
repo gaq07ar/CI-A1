@@ -1,4 +1,3 @@
-//Módulo Lector RFID-RC522 RF
 #include <SPI.h>
 #include <MFRC522.h>
 
