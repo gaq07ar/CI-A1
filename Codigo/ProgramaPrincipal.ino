@@ -19,10 +19,10 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 // Variables del programa
 EthernetClient client;
 byte ActualUID[4]; //almacenará el código del Tag leído
+char nombre[16];
 
 // Configuración Cerradura Inteligente
-char usuarioActual[] = "gaq07ar";   // Este valor indica el usuario actual
-char idPuerta[] = "1";              // Este valor indica la puerta en la que está colocado el dispositivo
+char idPuerta[] = "Prueba2";              // Este valor indica la puerta en la que está colocado el dispositivo
 
 // Configuración motor
 const int motorPin1 = 38; // 28BYJ48 In1
@@ -32,7 +32,7 @@ const int motorPin4 = 35; // 28BYJ48 In4
 
 int motorSpeed = 1200;  //variable para fijar la velocidad
 int stepCounter = 0;    // contador para los pasos
-int stepsPerRev = 2001; // pasos para una vuelta completa
+int stepsPerRev = 1000; // pasos para una vuelta completa
 
 // Secuencia media fase
 const int numSteps = 8;
@@ -48,15 +48,11 @@ void setup()
 
 void loop()
 {
-    char ant = 'X';
-    bool noTieneAcceso = 1;
     if (mfrc522.PICC_IsNewCardPresent()) // Revisamos si hay nuevas tarjetas  presentes
     {
         if (mfrc522.PICC_ReadCardSerial()) // Seleccionamos una tarjeta
         {
-            client.print("GET /api/usuario/hasaccess/usuarioemail/");
-            client.print(usuarioActual);
-            client.print("/puertapublicidentification/");
+            client.print("GET /api/usuario/checkaccess/puertapublicidentification/");
             client.print(idPuerta);
             client.print("/llavepublicidentification/");
             for (byte i = 0; i < mfrc522.uid.size; i++)
@@ -72,28 +68,7 @@ void loop()
             Serial.println();
             client.println();
             delay(1000);
-            while (client.available())
-            {
-                char act = client.read();
-                if(ant == 'O')
-                {
-                    if(act == 'K')
-                    {                        
-                        noTieneAcceso = 0;
-                    }
-                }
-                ant = act;
-                Serial.print(act);
-            }
-            if(noTieneAcceso)
-            {
-                imprimirMensajeLCDMonitorUnaLinea("Acc. Denegado", 0, 0, 2000);
-            }
-            else
-            {
-                imprimirMensajeLCDMonitorUnaLinea("Bienvenido", 0, 0, 2000);
-                abrirYCerrarCerradura();
-            }
+            validarAcceso();
             Serial.println();
             client.stop();
             mfrc522.PICC_HaltA(); // Terminamos la lectura de la tarjeta  actual
@@ -148,6 +123,45 @@ void verificarEstadoConexion()
     }
 }
 
+void validarAcceso()
+{
+    int cantCaracteresLeidos,cantCaracteresUsuario;
+    cantCaracteresLeidos = cantCaracteresUsuario = 0;
+    char ant = 'X';
+    bool noTieneAcceso = 1;
+    while (client.available())
+    {
+        char act = client.read();
+        if (ant == 'O')
+        {
+            if (act == 'K')
+            {
+                noTieneAcceso = 0;
+            }
+        }
+        if(noTieneAcceso == 0 && cantCaracteresLeidos>2)
+        {
+            if(act != '#')
+            {
+                nombre[cantCaracteresUsuario]=act;
+                cantCaracteresUsuario++;
+            }
+        }
+        ant = act;
+        cantCaracteresLeidos++;
+        Serial.print(act);
+    }
+    if (noTieneAcceso)
+    {
+        imprimirMensajeLCDMonitorUnaLinea("Acc. Denegado", 0, 0, 2000);
+    }
+    else
+    {
+        imprimirMensajeBienvenida(cantCaracteresUsuario);
+        abrirYCerrarCerradura();
+    }
+}
+
 void mensajeUsuarioDisplay (const char *usuario, bool acceso)
 {
     if (acceso)
@@ -179,6 +193,24 @@ void imprimirMensajeLCDMonitorDosLineas (const char *mensaje1, const char * mens
     lcd.print(mensaje2);
     Serial.println(mensaje2);
     delay(tEspera);
+}
+
+void imprimirMensajeBienvenida(int tope)
+{
+    int i=0;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Bienvenido:");
+    Serial.println("Bienvenido:");
+    lcd.setCursor(0,1);
+    while(i<tope)
+    {
+        lcd.print(nombre[i]);
+        Serial.print(nombre[i]);
+        i++;
+    }
+    Serial.println();
+    delay(1000);
 }
 
 void imprimirMensajeLCDMonitorDosLineas (const char *mensaje1, IPAddress mensaje2, uint8_t posHorizontal1, uint8_t posVertical1, uint8_t posHorizontal2, uint8_t posVertical2, unsigned long tEspera)
