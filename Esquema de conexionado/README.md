@@ -1,2 +1,2 @@
 ## Importante
-Para poder ver el archivo .ftz instalar Fritzing. Página oficial: http://fritzing.org/.
+Para poder ver y abrir el archivo EsquemaCI-AMega2560.fzz instalar Fritzing. Página oficial: http://fritzing.org/.
